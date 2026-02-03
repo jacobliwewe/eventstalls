@@ -5,10 +5,17 @@ import Home from './pages/Home';
 import Booking from './pages/Booking';
 import Success from './pages/Success';
 import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
+import CreateEvent from './pages/admin/CreateEvent';
+import Transactions from './pages/admin/Transactions';
+import Profile from './pages/Profile';
+
+import { Toaster } from 'sonner';
 
 function App() {
   return (
     <AuthProvider>
+      <Toaster position="top-center" richColors />
       <Router>
         <Layout>
           <Routes>
@@ -16,6 +23,10 @@ function App() {
             <Route path="/book/:id" element={<Booking />} />
             <Route path="/success" element={<Success />} />
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/signup" element={<SignUp />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/admin/create-event" element={<CreateEvent />} />
+            <Route path="/admin/transactions" element={<Transactions />} />
           </Routes>
         </Layout>
       </Router>

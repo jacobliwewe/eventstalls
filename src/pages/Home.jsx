@@ -1,7 +1,31 @@
-import { EVENTS } from '../data/events';
+import { useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import EventCard from '../components/EventCard';
+import { Loader2 } from 'lucide-react';
 
 export default function Home() {
+    const [events, setEvents] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const q = query(collection(db, 'events'), orderBy('createdAt', 'desc'));
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const eventsData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setEvents(eventsData);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error fetching events:", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
     return (
         <div className="animate-fade-in">
             {/* Hero Section */}
@@ -15,11 +39,32 @@ export default function Home() {
             </div>
 
             {/* Events Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-                {EVENTS.map(event => (
-                    <EventCard key={event.id} event={event} />
-                ))}
-            </div>
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
+                    <Loader2 className="animate-spin" size={48} color="var(--primary)" />
+                </div>
+            ) : (
+                <div className="container" style={{ padding: 0 }}>
+                    {events.length > 0 ? (
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                            gap: '2.5rem',
+                            justifyContent: 'center'
+                        }}>
+                            {events.map(event => (
+                                <div key={event.id} style={{ maxWidth: '450px' }}>
+                                    <EventCard event={event} />
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
+                            <p>No events found. Admin has not created any events yet.</p>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
