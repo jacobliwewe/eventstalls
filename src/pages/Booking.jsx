@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState, useMemo, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import {
     Check, AlertCircle, Loader2, ArrowLeft,
@@ -59,7 +59,13 @@ export default function Booking() {
         };
 
         fetchEvent();
-    }, [id]);
+
+        // Security check: only logged in users can book
+        if (!loading && !user) {
+            toast.error("Please sign in to book a stall");
+            navigate('/signin', { state: { from: `/book/${id}` } });
+        }
+    }, [id, user, loading, navigate]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -67,8 +73,8 @@ export default function Booking() {
     };
 
     const selectedStall = useMemo(() => {
-        if (!event) return null;
-        return event.stallTypes.find(s => s.id === formData.stallType);
+        if (!event || !formData.stallType) return null;
+        return event.stallTypes.find(s => s.id.toString() === formData.stallType.toString());
     }, [event, formData.stallType]);
 
     const price = useMemo(() => {
@@ -99,7 +105,11 @@ export default function Booking() {
             });
 
             // 2. Prepare PayChangu Payment Initiation
-            const tx_ref = `booking_${bookingRef.id}_${Date.now()}`;
+            // Using a unique numeric reference as requested (timestamp + 4 random digits)
+            const tx_ref = `${Date.now()}${Math.floor(1000 + Math.random() * 9000)}`;
+
+            // Save tx_ref back to doc for verification ledger
+            await updateDoc(bookingRef, { tx_ref });
 
             // Note: In a production app, the Secret Key should BE HIDDEN in environment variables
             // and the payment initiation should ideally happen on a secure backend server.
@@ -109,7 +119,7 @@ export default function Booking() {
                 headers: {
                     accept: 'application/json',
                     'content-type': 'application/json',
-                    Authorization: 'Bearer sec-live-Bg66AXsH6yJAskyH06O62L6H' // Secure key provided by user
+                    Authorization: 'Bearer sec-live-Bg66AXsH6yJAskyTguhXjrzH06O62L6H' // Secure key provided by user
                 },
                 body: JSON.stringify({
                     currency: 'MWK',
@@ -118,20 +128,30 @@ export default function Booking() {
                     first_name: formData.name.split(' ')[0] || 'Jacob',
                     last_name: formData.name.split(' ')[1] || 'Liwewe',
                     email: formData.email,
-                    callback_url: 'https://unimarket-mw.com/eventstalls/success', // Assuming a success route
-                    return_url: window.location.origin + '/profile' // Return to profile after payment
+                    callback_url: 'https://eventstalls.vercel.app/success', // Assuming a success route
+                    return_url: window.location.origin + '/success' // Return to success for verification
                 })
             };
 
             const response = await fetch('https://api.paychangu.com/payment', options);
-            const data = await response.json();
+            const resData = await response.json();
 
-            if (data.status === 'success' && data.data?.checkout_url) {
+            if (resData.status === 'success' && resData.data?.checkout_url) {
+                // 3. CAPTURE OFFICIAL TX_REF AND UPDATE FIRESTORE
+                // PayChangu might return a different ref or we use ours, 
+                // but we must ensure what we use for verification is what they have.
+                const officialRef = resData.data.tx_ref || tx_ref;
+
+                await updateDoc(bookingRef, {
+                    tx_ref: officialRef,
+                    paymentStatus: 'initiated'
+                });
+
                 toast.success("Redirecting to secure payment...");
-                window.location.href = data.data.checkout_url;
+                window.location.href = resData.data.checkout_url;
             } else {
-                console.error("PayChangu Error:", data);
-                throw new Error(data.message || "Could not initiate payment gateway");
+                console.error("PayChangu Error:", resData);
+                throw new Error(resData.message || "Could not initiate payment gateway");
             }
 
         } catch (error) {

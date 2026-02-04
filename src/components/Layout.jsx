@@ -54,19 +54,14 @@ const Navbar = () => {
                         </Link>
 
                         {user && (
-                            <Link to="/bookings" className={`nav-link ${isActive('/bookings') ? 'active' : ''}`}>
-                                <Ticket size={18} />
-                                <span>My Bookings</span>
-                            </Link>
-                        )}
-
-                        {user?.role === 'admin' && (
                             <>
-                                <Link to="/admin/create-event" className={`nav-link ${isActive('/admin/create-event') ? 'active' : ''}`} style={{ color: 'var(--accent)' }}>
-                                    <PlusSquare size={18} />
-                                    <span>Create Event</span>
-                                </Link>
-                                <Link to="/admin/transactions" className={`nav-link ${isActive('/admin/transactions') ? 'active' : ''}`} style={{ color: 'var(--accent)' }}>
+                                {user.role === 'admin' && (
+                                    <Link to="/admin/events" className={`nav-link ${isActive('/admin/events') ? 'active' : ''}`} style={{ color: 'var(--accent)' }}>
+                                        <PlusSquare size={18} />
+                                        <span>My Events</span>
+                                    </Link>
+                                )}
+                                <Link to="/transactions" className={`nav-link ${isActive('/transactions') ? 'active' : ''}`} style={{ color: 'var(--accent)' }}>
                                     <BarChart3 size={18} />
                                     <span>Transactions</span>
                                 </Link>
@@ -129,19 +124,14 @@ const Navbar = () => {
                     </Link>
 
                     {user && (
-                        <Link to="/bookings" className={`nav-link ${isActive('/bookings') ? 'active' : ''}`} style={{ fontSize: '1.2rem' }}>
-                            <Ticket size={22} />
-                            <span>My Bookings</span>
-                        </Link>
-                    )}
-
-                    {user?.role === 'admin' && (
                         <>
-                            <Link to="/admin/create-event" className={`nav-link ${isActive('/admin/create-event') ? 'active' : ''}`} style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>
-                                <PlusSquare size={22} />
-                                <span>Create Event</span>
-                            </Link>
-                            <Link to="/admin/transactions" className={`nav-link ${isActive('/admin/transactions') ? 'active' : ''}`} style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>
+                            {user.role === 'admin' && (
+                                <Link to="/admin/events" className={`nav-link ${isActive('/admin/events') ? 'active' : ''}`} style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>
+                                    <PlusSquare size={22} />
+                                    <span>My Events</span>
+                                </Link>
+                            )}
+                            <Link to="/transactions" className={`nav-link ${isActive('/transactions') ? 'active' : ''}`} style={{ fontSize: '1.2rem', color: 'var(--accent)' }}>
                                 <BarChart3 size={22} />
                                 <span>Transactions</span>
                             </Link>

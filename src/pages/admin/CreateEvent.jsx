@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useParams } from 'react-router-dom';
 import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import {
     Plus, Trash2, Upload, Loader2, ArrowLeft,
@@ -10,8 +11,13 @@ import {
 } from 'lucide-react';
 
 export default function CreateEvent() {
+    const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const isEditMode = !!id;
+
     const [loading, setLoading] = useState(false);
+    const [fetching, setFetching] = useState(isEditMode);
     const [uploadingImage, setUploadingImage] = useState(false);
 
     const [eventData, setEventData] = useState({
@@ -25,6 +31,41 @@ export default function CreateEvent() {
     const [stallTypes, setStallTypes] = useState([
         { id: Date.now(), name: '', dailyPrice: '', weeklyPrice: '' }
     ]);
+
+    useEffect(() => {
+        if (isEditMode) {
+            const fetchEvent = async () => {
+                try {
+                    const docRef = doc(db, 'events', id);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        setEventData({
+                            title: data.title,
+                            date: data.date,
+                            location: data.location,
+                            description: data.description,
+                            image: data.image
+                        });
+                        setStallTypes(data.stallTypes.map(s => ({
+                            ...s,
+                            dailyPrice: formatCurrency(s.dailyPrice),
+                            weeklyPrice: formatCurrency(s.weeklyPrice)
+                        })));
+                    } else {
+                        toast.error("Event not found");
+                        navigate('/admin/events');
+                    }
+                } catch (error) {
+                    console.error("Fetch error:", error);
+                    toast.error("Failed to load event for editing");
+                } finally {
+                    setFetching(false);
+                }
+            };
+            fetchEvent();
+        }
+    }, [id, isEditMode, navigate]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -102,24 +143,41 @@ export default function CreateEvent() {
             const finalEventData = {
                 ...eventData,
                 stallTypes: stallTypes.map(s => ({
-                    id: s.name.toLowerCase().replace(/\s+/g, '-'),
+                    id: s.id || s.name.toLowerCase().replace(/\s+/g, '-'),
                     name: s.name,
                     dailyPrice: Number(parseCurrency(s.dailyPrice)),
                     weeklyPrice: Number(parseCurrency(s.weeklyPrice))
                 })),
-                createdAt: serverTimestamp()
+                updatedAt: serverTimestamp()
             };
 
-            await addDoc(collection(db, 'events'), finalEventData);
-            toast.success("Event is now LIVE!");
-            navigate('/');
+            if (isEditMode) {
+                await updateDoc(doc(db, 'events', id), finalEventData);
+                toast.success("Event updated successfully!");
+            } else {
+                finalEventData.createdBy = user?.uid;
+                finalEventData.creatorEmail = user?.email;
+                finalEventData.createdAt = serverTimestamp();
+                await addDoc(collection(db, 'events'), finalEventData);
+                toast.success("Event is now LIVE!");
+            }
+            navigate('/admin/events');
         } catch (error) {
-            console.error("Error creating event:", error);
-            toast.error("Failed to go live. Check your connection.");
+            console.error("Error saving event:", error);
+            toast.error("Failed to save. Check your connection.");
         } finally {
             setLoading(false);
         }
     };
+
+    if (fetching) {
+        return (
+            <div className="loading-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+                <Loader2 className="animate-spin" size={48} color="var(--primary)" />
+                <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>Loading event data...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="create-event-page animate-fade-in">
@@ -131,15 +189,15 @@ export default function CreateEvent() {
             )}
 
             <div className="container">
-                <Link to="/" className="back-link">
+                <Link to="/admin/events" className="back-link">
                     <ArrowLeft size={18} />
-                    <span>Back to Home</span>
+                    <span>Back to Management</span>
                 </Link>
 
                 <header className="page-header">
                     <div className="header-text">
-                        <h1 className="text-gradient">Launch New Event</h1>
-                        <p>Fill in the details to publish your event to the MUBAS community.</p>
+                        <h1 className="text-gradient">{isEditMode ? 'Refine Event' : 'Launch New Event'}</h1>
+                        <p>{isEditMode ? 'Update the details of your existing event.' : 'Fill in the details to publish your event to the MUBAS community.'}</p>
                     </div>
                 </header>
 
@@ -329,7 +387,7 @@ export default function CreateEvent() {
                             {loading ? (
                                 <><Loader2 className="animate-spin" /><span>Syncing Records...</span></>
                             ) : (
-                                <span>Go Live & Publish</span>
+                                <span>{isEditMode ? 'Save Changes' : 'Go Live & Publish'}</span>
                             )}
                         </button>
                     </footer>
