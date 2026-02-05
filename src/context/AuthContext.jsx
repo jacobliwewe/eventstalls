@@ -91,8 +91,36 @@ export const AuthProvider = ({ children }) => {
         return signOut(auth);
     };
 
+    const updateUserData = async (updates) => {
+        if (!user) return;
+
+        try {
+            // Update Firebase Auth profile if name or photoURL is provided
+            if (updates.name || updates.photoURL) {
+                const profileUpdates = {};
+                if (updates.name) profileUpdates.displayName = updates.name;
+                if (updates.photoURL) profileUpdates.photoURL = updates.photoURL;
+                await updateProfile(auth.currentUser, profileUpdates);
+            }
+
+            // Update Firestore document
+            const userDocRef = doc(db, 'users', user.uid);
+            await setDoc(userDocRef, {
+                ...updates,
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+
+            // Update local state
+            setUser(prev => ({ ...prev, ...updates }));
+            return true;
+        } catch (error) {
+            console.error("Update user data failed:", error);
+            throw error;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, login, signup, logout, loading }}>
+        <AuthContext.Provider value={{ user, login, signup, logout, updateUserData, loading }}>
             {!loading && children}
         </AuthContext.Provider>
     );
