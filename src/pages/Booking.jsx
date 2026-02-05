@@ -23,7 +23,7 @@ export default function Booking() {
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
-        phone: '',
+        phone: user?.phone || '',
         stallType: '',
         duration: 'day',
         stallName: ''
@@ -34,7 +34,8 @@ export default function Booking() {
             setFormData(prev => ({
                 ...prev,
                 name: user.name || prev.name,
-                email: user.email || prev.email
+                email: user.email || prev.email,
+                phone: user.phone || prev.phone
             }));
         }
     }, [user]);
@@ -125,8 +126,8 @@ export default function Booking() {
                     currency: 'MWK',
                     amount: price.toString(),
                     tx_ref: tx_ref,
-                    first_name: formData.name.split(' ')[0] || 'Jacob',
-                    last_name: formData.name.split(' ')[1] || 'Liwewe',
+                    first_name: formData.name.split(' ')[0] || 'User',
+                    last_name: formData.name.split(' ')[1] || 'User',
                     email: formData.email,
                     callback_url: 'https://eventstalls.vercel.app/success', // Assuming a success route
                     return_url: window.location.origin + '/success' // Return to success for verification
