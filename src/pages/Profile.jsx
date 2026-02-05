@@ -2,7 +2,8 @@ import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import {
     User, Mail, Shield, Camera, Edit2, Save, X,
-    Loader2, CheckCircle2, AlertCircle, Phone
+    Loader2, CheckCircle2, AlertCircle, Phone,
+    Calendar, Key, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,13 +20,14 @@ export default function Profile() {
     });
     const fileInputRef = useRef(null);
 
+    // If user state is still loading or not available
     if (!user) {
         return (
-            <div className="container" style={{ paddingTop: '4rem', textAlign: 'center' }}>
+            <div className="container" style={{ paddingTop: '6rem', textAlign: 'center' }}>
                 <div className="glass-panel" style={{ padding: '3rem', maxWidth: '500px', margin: '0 auto' }}>
                     <AlertCircle size={48} color="var(--secondary)" style={{ marginBottom: '1rem' }} />
-                    <h2>Access Denied</h2>
-                    <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Please sign in to view your profile.</p>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: '700' }}>Access Denied</h2>
+                    <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Please sign in to manage your account.</p>
                 </div>
             </div>
         );
@@ -40,7 +42,6 @@ export default function Profile() {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Basic validation
         if (file.size > 5 * 1024 * 1024) {
             toast.error("Image size must be less than 5MB");
             return;
@@ -69,22 +70,22 @@ export default function Profile() {
                     const data = JSON.parse(xhr.responseText);
                     if (data.status === 'success') {
                         setFormData(prev => ({ ...prev, photoURL: data.url }));
-                        toast.success("Profile picture uploaded!");
+                        toast.success("Profile picture updated!");
                     } else {
                         toast.error(data.message || "Upload failed");
                     }
                 } catch (e) {
-                    toast.error("Failed to parse server response");
+                    toast.error("Server response error");
                 }
             } else {
-                toast.error("Server communication failed");
+                toast.error("Upload failed");
             }
             setUploadingImage(false);
             setUploadProgress(0);
         };
 
         xhr.onerror = () => {
-            toast.error("Failed to connect to upload server");
+            toast.error("Connection failed");
             setUploadingImage(false);
             setUploadProgress(0);
         };
@@ -102,180 +103,356 @@ export default function Profile() {
                 photoURL: formData.photoURL,
                 phone: formData.phone
             });
-            toast.success("Profile updated successfully!");
+            toast.success("Changes saved successfully!");
             setIsEditing(false);
         } catch (error) {
-            toast.error("Failed to update profile");
+            toast.error("Error updating profile");
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="container animate-fade-in" style={{ padding: '3rem 0', maxWidth: '800px', margin: '0 auto' }}>
-            <header style={{ marginBottom: '3rem', textAlign: 'center' }}>
-                <h1 className="text-gradient" style={{ fontSize: '2.5rem', fontWeight: '800' }}>Account Settings</h1>
-                <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Manage your profile and preferences</p>
-            </header>
+        <div className="profile-container animate-fade-in">
+            {/* Background Blobs for Atmosphere */}
+            <div className="bg-blob blob-1"></div>
+            <div className="bg-blob blob-2"></div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }} className="profile-grid">
-                {/* Left Column: Avatar and Quick Stats */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
-                        <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 1.5rem', borderRadius: '50%', background: 'var(--bg-dark)', border: '2px solid var(--border-glass)', overflow: 'hidden' }}>
-                            {formData.photoURL || user.photoURL ? (
-                                <img
-                                    src={isEditing ? formData.photoURL : (user.photoURL || formData.photoURL)}
-                                    alt={user.name}
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                            ) : (
-                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, var(--primary), var(--secondary))' }}>
-                                    <span style={{ fontSize: '2.5rem', fontWeight: '700', color: 'white' }}>{user.name?.charAt(0).toUpperCase()}</span>
-                                </div>
-                            )}
+            <div className="container content-layer">
+                <header className="profile-header">
+                    <div>
+                        <h1 className="text-gradient">Account Settings</h1>
+                        <p>Manage your account settings and preferences</p>
+                    </div>
+                </header>
 
-                            {isEditing && (
-                                <button
-                                    className="upload-btn-overlay"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    disabled={uploadingImage}
-                                >
-                                    {uploadingImage ? (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                            <Loader2 className="animate-spin" size={24} />
-                                            <span style={{ fontSize: '0.6rem', fontWeight: 'bold' }}>{uploadProgress}%</span>
+                <div className="profile-layout">
+                    {/* Left: Avatar & Badges */}
+                    <aside className="profile-sidebar">
+                        <section className="glass-panel profile-card">
+                            <div className="avatar-wrapper">
+                                <div className="avatar-circle">
+                                    {(isEditing ? formData.photoURL : user.photoURL) || user.photoURL ? (
+                                        <img
+                                            src={isEditing ? formData.photoURL : user.photoURL}
+                                            alt={user.name}
+                                        />
+                                    ) : (
+                                        <div className="avatar-placeholder">
+                                            {user.name?.charAt(0).toUpperCase()}
                                         </div>
-                                    ) : <Camera size={24} />}
-                                </button>
-                            )}
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                style={{ display: 'none' }}
-                                accept="image/*"
-                                onChange={handleImageUpload}
-                            />
-                        </div>
+                                    )}
 
-                        {uploadingImage && (
-                            <div style={{ marginBottom: '1rem', width: '100%' }}>
-                                <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${uploadProgress}%`, background: 'var(--primary)', transition: 'width 0.2s ease' }}></div>
+                                    {isEditing && (
+                                        <button
+                                            className="avatar-edit-overlay"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadingImage}
+                                            type="button"
+                                            aria-label="Upload profile picture"
+                                        >
+                                            {uploadingImage ? (
+                                                <div className="upload-loader">
+                                                    <Loader2 className="animate-spin" size={24} />
+                                                    <span>{uploadProgress}%</span>
+                                                </div>
+                                            ) : <Camera size={24} />}
+                                        </button>
+                                    )}
+                                </div>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    style={{ display: 'none' }}
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                />
+                            </div>
+
+                            {uploadingImage && (
+                                <div className="upload-progress-bar-container">
+                                    <div className="upload-progress-fill" style={{ width: `${uploadProgress}%` }}></div>
+                                </div>
+                            )}
+
+                            <div className="user-info-brief">
+                                <h2>{user.name}</h2>
+                                <p>{user.email}</p>
+                            </div>
+
+                            <div className="user-badges">
+                                <div className="profile-badge">
+                                    <Shield size={12} />
+                                    <span>{user.role}</span>
                                 </div>
                             </div>
-                        )}
+                        </section>
 
-                        <h2 style={{ fontSize: '1.25rem', fontWeight: '700', marginBottom: '0.25rem' }}>{user.name}</h2>
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>{user.email}</p>
+                        <section className="glass-panel account-status">
+                            <h3>Account Health</h3>
+                            <ul className="status-list">
+                                <li className={user.emailVerified ? 'active' : ''}>
+                                    <CheckCircle2 size={16} />
+                                    <span>Email Verified</span>
+                                </li>
+                                <li className="active">
+                                    <CheckCircle2 size={16} />
+                                    <span>Security Active</span>
+                                </li>
+                                <li className="active">
+                                    <Calendar size={16} />
+                                    <span>Member since 2024</span>
+                                </li>
+                            </ul>
+                        </section>
+                    </aside>
 
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                            <div className="badge">
-                                <Shield size={12} />
-                                <span style={{ textTransform: 'capitalize' }}>{user.role || 'User'}</span>
-                            </div>
+                    {/* Right: Main Form Content */}
+                    <main className="profile-main-content">
+                        <div className="glass-panel main-form-panel">
+                            <header className="panel-header">
+                                <div className="panel-title">
+                                    <User size={20} className="icon-violet" />
+                                    <h2>Personal Details</h2>
+                                </div>
+                                {!isEditing && (
+                                    <button
+                                        className="btn btn-outline edit-btn"
+                                        onClick={() => setIsEditing(true)}
+                                    >
+                                        <Edit2 size={14} />
+                                        <span>Edit Profile</span>
+                                    </button>
+                                )}
+                            </header>
+
+                            <form onSubmit={handleSubmit} className="profile-form">
+                                <div className="form-grid">
+                                    <div className="form-group">
+                                        <label>
+                                            <User size={14} /> Full Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="name"
+                                            value={isEditing ? formData.name : user.name}
+                                            onChange={handleInputChange}
+                                            disabled={!isEditing || isLoading}
+                                            placeholder="John Doe"
+                                            className={!isEditing ? "input-readonly" : "input-editable"}
+                                        />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>
+                                            <Mail size={14} /> Email Address
+                                        </label>
+                                        <div className="input-with-icon-static">
+                                            <input
+                                                type="email"
+                                                value={user.email}
+                                                disabled
+                                                className="input-readonly"
+                                            />
+                                            <Key size={14} className="input-lock-icon" />
+                                        </div>
+                                        <p className="input-hint">Email is managed by your provider.</p>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>
+                                            <Phone size={14} /> Phone Number
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            name="phone"
+                                            value={isEditing ? formData.phone : (user.phone || 'Not set')}
+                                            onChange={handleInputChange}
+                                            disabled={!isEditing || isLoading}
+                                            placeholder="+265 888 123 456"
+                                            className={!isEditing ? "input-readonly" : "input-editable"}
+                                        />
+                                    </div>
+                                </div>
+
+                                {isEditing && (
+                                    <div className="form-actions">
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary btn-save"
+                                            disabled={isLoading || uploadingImage}
+                                        >
+                                            {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Save size={18} />}
+                                            <span>Save Changes</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline btn-cancel"
+                                            onClick={() => {
+                                                setIsEditing(false);
+                                                setFormData({
+                                                    name: user.name,
+                                                    photoURL: user.photoURL,
+                                                    phone: user.phone || ''
+                                                });
+                                            }}
+                                            disabled={isLoading}
+                                        >
+                                            <X size={18} />
+                                            <span>Cancel</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </form>
+
+                            <footer className="panel-footer">
+                                <div className="footer-meta">
+                                    <h4>Technical Details</h4>
+                                    <div className="uid-display">
+                                        <code>UID: {user.uid}</code>
+                                        <ExternalLink size={12} />
+                                    </div>
+                                </div>
+                            </footer>
                         </div>
-                    </div>
-
-                    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem' }}>Account Health</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-                                <CheckCircle2 size={16} color={user.emailVerified ? "#4ade80" : "var(--text-muted)"} />
-                                <span style={{ color: user.emailVerified ? "var(--text-main)" : "var(--text-muted)" }}>Email Verified</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.85rem' }}>
-                                <CheckCircle2 size={16} color="#4ade80" />
-                                <span style={{ color: "var(--text-main)" }}>Security Active</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Edit Form */}
-                <div className="glass-panel" style={{ padding: '2.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                        <h3 style={{ fontSize: '1.5rem', fontWeight: '700' }}>Personal Information</h3>
-                        {!isEditing && (
-                            <button className="btn btn-outline" onClick={() => setIsEditing(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-                                <Edit2 size={14} style={{ marginRight: '0.5rem' }} />
-                                Edit Profile
-                            </button>
-                        )}
-                    </div>
-
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                        <div className="input-field">
-                            <label><User size={14} style={{ marginRight: '0.5rem' }} /> Full Name</label>
-                            <input
-                                type="text"
-                                name="name"
-                                value={isEditing ? formData.name : user.name}
-                                onChange={handleInputChange}
-                                disabled={!isEditing || isLoading}
-                                placeholder="Enter your full name"
-                                className={!isEditing ? "readonly-input" : ""}
-                            />
-                        </div>
-
-                        <div className="input-field">
-                            <label><Mail size={14} style={{ marginRight: '0.5rem' }} /> Email Address</label>
-                            <input
-                                type="email"
-                                value={user.email}
-                                disabled
-                                className="readonly-input"
-                            />
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>Email cannot be changed as it is linked to your login provider.</p>
-                        </div>
-
-                        <div className="input-field">
-                            <label><Phone size={14} style={{ marginRight: '0.5rem' }} /> Phone Number</label>
-                            <input
-                                type="tel"
-                                name="phone"
-                                value={isEditing ? formData.phone : (user.phone || 'Not provided')}
-                                onChange={handleInputChange}
-                                disabled={!isEditing || isLoading}
-                                placeholder="e.g. +265 888 123 456"
-                                className={!isEditing ? "readonly-input" : ""}
-                            />
-                        </div>
-
-                        {isEditing && (
-                            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isLoading || uploadingImage}>
-                                    {isLoading ? <Loader2 className="animate-spin" size={20} /> : <><Save size={18} style={{ marginRight: '0.5rem' }} /> Save Changes</>}
-                                </button>
-                                <button type="button" className="btn btn-outline" style={{ flex: 0.5 }} onClick={() => { setIsEditing(false); setFormData({ name: user.name, photoURL: user.photoURL, phone: user.phone || '' }); }} disabled={isLoading}>
-                                    <X size={18} style={{ marginRight: '0.5rem' }} /> Cancel
-                                </button>
-                            </div>
-                        )}
-                    </form>
-
-                    <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid var(--border-glass)' }}>
-                        <h4 style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '1.25rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Technical Details</h4>
-                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '12px', fontSize: '0.8rem', fontFamily: 'monospace', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            User ID: {user.uid}
-                        </div>
-                    </div>
+                    </main>
                 </div>
             </div>
 
             <style dangerouslySetInnerHTML={{
                 __html: `
-                .profile-grid {
-                    grid-template-columns: 1fr 2fr;
+                .profile-container {
+                    position: relative;
+                    padding: 4rem 0;
+                    min-height: 100vh;
+                    overflow: hidden;
                 }
-                @media (max-width: 768px) {
-                    .profile-grid { grid-template-columns: 1fr; }
+
+                .bg-blob {
+                    position: absolute;
+                    border-radius: 50%;
+                    filter: blur(80px);
+                    z-index: 1;
+                    opacity: 0.15;
+                    pointer-events: none;
                 }
-                .upload-btn-overlay {
+
+                .blob-1 {
+                    width: 400px;
+                    height: 400px;
+                    background: var(--primary);
+                    top: -100px;
+                    right: -100px;
+                }
+
+                .blob-2 {
+                    width: 300px;
+                    height: 300px;
+                    background: var(--secondary);
+                    bottom: -50px;
+                    left: -50px;
+                }
+
+                .content-layer {
+                    position: relative;
+                    z-index: 2;
+                }
+
+                .profile-header {
+                    text-align: center;
+                    margin-bottom: 4rem;
+                }
+
+                .profile-header h1 {
+                    font-size: 3rem;
+                    font-weight: 800;
+                    letter-spacing: -0.02em;
+                    margin-bottom: 0.5rem;
+                }
+
+                .profile-header p {
+                    color: var(--text-muted);
+                    font-size: 1.1rem;
+                }
+
+                .profile-layout {
+                    display: grid;
+                    grid-template-columns: 300px 1fr;
+                    gap: 2rem;
+                    align-items: start;
+                }
+
+                @media (max-width: 900px) {
+                    .profile-layout {
+                        grid-template-columns: 1fr;
+                    }
+                    .profile-sidebar {
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 2rem;
+                    }
+                }
+
+                @media (max-width: 600px) {
+                    .profile-sidebar {
+                        grid-template-columns: 1fr;
+                    }
+                    .profile-header h1 {
+                        font-size: 2.25rem;
+                    }
+                }
+
+                .profile-card {
+                    padding: 2.5rem;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
+                    margin-bottom: 2rem;
+                }
+
+                .avatar-wrapper {
+                    position: relative;
+                    margin-bottom: 1.5rem;
+                }
+
+                .avatar-circle {
+                    width: 140px;
+                    height: 140px;
+                    border-radius: 50%;
+                    background: var(--bg-dark);
+                    padding: 4px;
+                    border: 1px solid var(--border-glass);
+                    position: relative;
+                    overflow: hidden;
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+                }
+
+                .avatar-circle img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                    border-radius: 50%;
+                }
+
+                .avatar-placeholder {
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: linear-gradient(135deg, var(--primary), var(--secondary));
+                    font-size: 3rem;
+                    font-weight: 800;
+                    color: white;
+                    border-radius: 50%;
+                }
+
+                .avatar-edit-overlay {
                     position: absolute;
                     inset: 0;
-                    background: rgba(0,0,0,0.4);
-                    backdrop-filter: blur(2px);
+                    background: rgba(0,0,0,0.5);
+                    backdrop-filter: blur(4px);
                     border: none;
                     color: white;
                     display: flex;
@@ -283,35 +460,243 @@ export default function Profile() {
                     justify-content: center;
                     cursor: pointer;
                     opacity: 0;
-                    transition: opacity 0.2s;
+                    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    border-radius: 50%;
                 }
-                .upload-btn-overlay:hover {
+
+                .avatar-edit-overlay:hover {
                     opacity: 1;
                 }
-                .badge {
+
+                .upload-loader {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 0.25rem;
+                }
+
+                .upload-loader span {
+                    font-size: 0.7rem;
+                    font-weight: 700;
+                }
+
+                .upload-progress-bar-container {
+                    width: 100%;
+                    height: 6px;
+                    background: rgba(255,255,255,0.05);
+                    border-radius: 3px;
+                    margin-bottom: 1rem;
+                    overflow: hidden;
+                }
+
+                .upload-progress-fill {
+                    height: 100%;
+                    background: linear-gradient(90deg, var(--primary), var(--secondary));
+                    transition: width 0.3s ease;
+                }
+
+                .user-info-brief h2 {
+                    font-size: 1.5rem;
+                    font-weight: 700;
+                    margin-bottom: 0.25rem;
+                }
+
+                .user-info-brief p {
+                    color: var(--text-muted);
+                    font-size: 0.9rem;
+                    margin-bottom: 1.5rem;
+                }
+
+                .profile-badge {
                     display: inline-flex;
                     align-items: center;
-                    gap: 0.4rem;
-                    padding: 0.35rem 0.8rem;
-                    border-radius: 100px;
+                    gap: 0.5rem;
+                    padding: 0.5rem 1rem;
                     background: rgba(139, 92, 246, 0.1);
                     color: var(--primary);
-                    font-size: 0.75rem;
-                    font-weight: 600;
                     border: 1px solid rgba(139, 92, 246, 0.2);
+                    border-radius: 100px;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
                 }
-                .input-field label {
+
+                .account-status {
+                    padding: 2rem;
+                }
+
+                .account-status h3 {
+                    font-size: 1.1rem;
+                    font-weight: 700;
+                    margin-bottom: 1.5rem;
+                }
+
+                .status-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.25rem;
+                }
+
+                .status-list li {
                     display: flex;
                     align-items: center;
-                    margin-bottom: 0.6rem;
-                    font-weight: 500;
+                    gap: 0.75rem;
+                    font-size: 0.9rem;
+                    color: var(--text-muted);
+                    transition: color 0.3s;
+                }
+
+                .status-list li.active {
                     color: var(--text-main);
                 }
-                .readonly-input {
+
+                .status-list li.active svg {
+                    color: #4ade80;
+                }
+
+                .main-form-panel {
+                    padding: 3rem;
+                    height: 100%;
+                }
+
+                .panel-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 2.5rem;
+                }
+
+                .panel-title {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                }
+
+                .panel-title h2 {
+                    font-size: 1.75rem;
+                    font-weight: 700;
+                }
+
+                .edit-btn {
+                    padding: 0.6rem 1.2rem;
+                    font-size: 0.9rem;
+                    gap: 0.5rem;
+                }
+
+                .form-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 2rem;
+                }
+
+                @media (max-width: 1100px) {
+                    .form-grid {
+                        grid-template-columns: 1fr;
+                    }
+                }
+
+                .form-group label {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-bottom: 0.75rem;
+                    font-weight: 600;
+                    color: var(--text-main);
+                    font-size: 0.95rem;
+                }
+
+                .form-group input {
+                    padding: 1rem 1.25rem;
+                    background: rgba(15, 23, 42, 0.4);
+                    border: 1px solid var(--border-glass);
+                    border-radius: 12px;
+                    transition: all 0.3s;
+                }
+
+                .input-readonly {
+                    background: rgba(255, 255, 255, 0.03) !important;
                     border-color: transparent !important;
-                    background: rgba(255, 255, 255, 0.05) !important;
-                    cursor: default;
                     color: var(--text-muted) !important;
+                    cursor: default;
+                }
+
+                .input-editable:focus {
+                    background: rgba(15, 23, 42, 0.6);
+                    border-color: var(--primary);
+                    box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+                }
+
+                .input-with-icon-static {
+                    position: relative;
+                }
+
+                .input-lock-icon {
+                    position: absolute;
+                    right: 1.25rem;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: var(--text-muted);
+                    opacity: 0.5;
+                }
+
+                .input-hint {
+                    font-size: 0.8rem;
+                    color: var(--text-muted);
+                    margin-top: 0.5rem;
+                    opacity: 0.7;
+                }
+
+                .form-actions {
+                    display: flex;
+                    gap: 1rem;
+                    margin-top: 3rem;
+                }
+
+                .btn-save {
+                    flex: 2;
+                    padding: 1rem;
+                    gap: 0.75rem;
+                }
+
+                .btn-cancel {
+                    flex: 1;
+                    padding: 1rem;
+                    gap: 0.75rem;
+                }
+
+                .panel-footer {
+                    margin-top: 4rem;
+                    padding-top: 2rem;
+                    border-top: 1px solid var(--border-glass);
+                }
+
+                .footer-meta h4 {
+                    font-size: 0.8rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.1em;
+                    color: var(--text-muted);
+                    margin-bottom: 1rem;
+                }
+
+                .uid-display {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    padding: 0.75rem 1.25rem;
+                    background: rgba(0,0,0,0.2);
+                    border-radius: 8px;
+                    color: var(--text-muted);
+                    font-size: 0.85rem;
+                }
+
+                .uid-display code {
+                    font-family: inherit;
+                    opacity: 0.8;
+                }
+
+                .icon-violet {
+                    color: var(--primary);
                 }
             `}} />
         </div>
