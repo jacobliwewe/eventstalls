@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { UserPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import emailjs from '@emailjs/browser';
 
 export default function SignUp() {
     const [name, setName] = useState('');
@@ -13,6 +14,33 @@ export default function SignUp() {
     const { signup } = useAuth();
     const navigate = useNavigate();
 
+    const sendWelcomeEmail = async (userName, userEmail) => {
+        // NOTE: User needs to provide Service ID, Template ID and Public Key
+        const serviceId = 'service_8hh0pnp';
+        const templateId = 'template_76vquid'; // Template with the HTML provided by user
+        const publicKey = 'iIYlK6TrYddUEBsa4';
+
+        if (serviceId === 'service_placeholder') {
+            console.log("Welcome Email: EmailJS keys not configured yet.");
+            return;
+        }
+
+        const templateParams = {
+            user_name: userName,
+            user_email: userEmail,
+            website_link: window.location.origin,
+            company_name: "MUBAS Event Hub",
+            company_email: "support@unimarket-mw.com"
+        };
+
+        try {
+            await emailjs.send(serviceId, templateId, templateParams, publicKey);
+            console.log("Welcome email sent successfully");
+        } catch (err) {
+            console.error("Failed to send welcome email:", err);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
@@ -20,6 +48,10 @@ export default function SignUp() {
 
         try {
             await signup(email, password, name);
+
+            // Trigger Welcome Email
+            sendWelcomeEmail(name, email);
+
             toast.success('Account created successfully!');
             navigate('/');
         } catch (err) {
